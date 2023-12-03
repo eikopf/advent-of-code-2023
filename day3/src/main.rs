@@ -1,4 +1,4 @@
-use std::io;
+use std::{io, collections::HashMap};
 
 use nom::{
     IResult, 
@@ -14,8 +14,10 @@ use nom::{
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 enum SchematicItem {
     Number {value: u64, length: usize},
-    Symbol,
+    Symbol(char),
 }
+
+type Schematic = Vec<Vec<Option<SchematicItem>>>;
 
 /// Parses a number as it would appear in a schematic line.
 fn number(source: &str) -> IResult<&str, SchematicItem> {
@@ -31,13 +33,13 @@ fn number(source: &str) -> IResult<&str, SchematicItem> {
 
 /// Parses a symbol (i.e. not a period or a number) in a schematic line.
 fn symbol(source: &str) -> IResult<&str, SchematicItem> {
-    let mut parser = not(number)
+    let mut parser = map(
+        not(number)
         .and(not(tag(".")))
-        .and(anychar);
+        .and(anychar), 
+        |(_, c)| SchematicItem::Symbol(c));
 
-    // we don't actually care what symbol it was
-    let (tail, _) = parser.parse(source)?;
-    Ok((tail, SchematicItem::Symbol))
+    parser.parse(source)
 }
 
 /// Parses a full schematic line
@@ -54,7 +56,7 @@ fn parse_schematic_line(source: &str) -> IResult<&str, Vec<Option<SchematicItem>
 }
 
 /// Reads all available lines from stdin and constructs a representation of the input.
-fn get_full_input_from_stdin() -> anyhow::Result<Vec<Vec<Option<SchematicItem>>>> {
+fn get_full_input_from_stdin() -> anyhow::Result<Schematic> {
     Ok(io::stdin()
         .lines()
         .into_iter()
@@ -73,11 +75,110 @@ fn get_full_input_from_stdin() -> anyhow::Result<Vec<Vec<Option<SchematicItem>>>
                         }
                         vec
                     }
-                    Some(SchematicItem::Symbol) => vec![Some(SchematicItem::Symbol)],
+                    sym @ Some(SchematicItem::Symbol(_)) => vec![sym],
                     None => vec![None],
                 }).flatten().collect())
         .collect()
     )
+}
+
+fn get_adjacent_symbols((i, j): (usize, usize), schematic: &Schematic) -> Option<Vec<SchematicItem>> {
+    let Some(SchematicItem::Number { value, length }) = schematic[i][j] else {
+        return None;
+    };
+
+    let mut adjacent_items = Vec::with_capacity(2 * length + 6);
+
+    // left edge
+    if j > 0 {
+        adjacent_items.push(schematic[i][j - 1]);
+
+        if i > 0 {
+            adjacent_items.push(schematic[i - 1][j - 1]);
+        }
+
+        if i < schematic.len() - 1 {
+            adjacent_items.push(schematic[i + 1][j - 1]);
+        }
+    }
+
+    // top and bottom edges
+    for offset in 0..length {
+        if i > 0 {
+            adjacent_items.push(schematic[i - 1][j + offset]);
+        }
+
+        if i < schematic.len() - 1 {
+            adjacent_items.push(schematic[i + 1][j + offset]);
+        }
+    }
+
+    // right edge
+    if j + length < schematic[i].len() - 1 {
+        adjacent_items.push(schematic[i][j + length]);
+
+        if i > 0 {
+            adjacent_items.push(schematic[i - 1][j + length]);
+        }
+
+        if i < schematic.len() - 1 {
+            adjacent_items.push(schematic[i + 1][j + length]);
+        }
+    }
+
+    Some(
+        adjacent_items
+        .into_iter()
+        .filter_map(|item| match item {
+            sym @ Some(SchematicItem::Symbol(_)) => sym,
+            _ => None
+        })
+        .collect()
+    )
+}
+
+fn get_adjacent_indices(
+    (i, j): (usize, usize), 
+    schematic: &Schematic
+) -> Option<Vec<(usize, usize)>> {
+    let Some(SchematicItem::Number { value, length }) = schematic[i][j] else {return None;};
+    let mut adjacent_indices = Vec::with_capacity(2 * length + 6);
+
+    if j > 0 {
+        adjacent_indices.push((i, j - 1));
+
+        if i > 0 {
+            adjacent_indices.push((i - 1, j - 1));
+        }
+
+        if i < schematic.len() - 1 {
+            adjacent_indices.push((i + 1, j - 1));
+        }
+    }
+
+    for offset in 0..length {
+        if i > 0 {
+            adjacent_indices.push((i - 1, j + offset));
+        }
+
+        if i < schematic.len() - 1 {
+            adjacent_indices.push((i + 1, j + offset));
+        }
+    }
+
+    if j + length < schematic[i].len() - 1 {
+        adjacent_indices.push((i, j + length));
+
+        if i > 0 {
+            adjacent_indices.push((i - 1, j + length));
+        }
+
+        if i < schematic.len() - 1 {
+            adjacent_indices.push((i + 1, j + length));
+        }
+    }
+
+    Some(adjacent_indices)
 }
 
 fn get_q1_result() -> anyhow::Result<usize> {
@@ -86,47 +187,8 @@ fn get_q1_result() -> anyhow::Result<usize> {
 
     for (i, line) in schematic.clone().into_iter().enumerate() {
         for (j, elem) in line.clone().into_iter().enumerate() {
-            if let Some(SchematicItem::Number { value, length }) = elem {
-                let mut adjacent_items = Vec::with_capacity(2 * length + 6);
-
-                // left edge
-                if j > 0 {
-                    adjacent_items.push(schematic[i][j - 1]);
-
-                    if i > 0 {
-                        adjacent_items.push(schematic[i - 1][j - 1]);
-                    }
-
-                    if i < schematic.len() - 1 {
-                        adjacent_items.push(schematic[i + 1][j - 1]);
-                    }
-                }
-
-                // top and bottom edges
-                for offset in 0..length {
-                    if i > 0 {
-                        adjacent_items.push(schematic[i - 1][j + offset]);
-                    }
-
-                    if i < schematic.len() - 1 {
-                        adjacent_items.push(schematic[i + 1][j + offset]);
-                    }
-                }
-
-                // right edge
-                if j + length < schematic[i].len() - 1 {
-                    adjacent_items.push(schematic[i][j + length]);
-
-                    if i > 0 {
-                        adjacent_items.push(schematic[i - 1][j + length]);
-                    }
-
-                    if i < schematic.len() - 1 {
-                        adjacent_items.push(schematic[i + 1][j + length]);
-                    }
-                }
-
-                if adjacent_items.contains(&Some(SchematicItem::Symbol)) { 
+            if let Some(SchematicItem::Number { value, .. }) = elem {
+                if get_adjacent_symbols((i, j), &schematic).unwrap().len() > 0 { 
                     part_number_sum += value as usize; 
                 }
             }
@@ -136,7 +198,41 @@ fn get_q1_result() -> anyhow::Result<usize> {
     Ok(part_number_sum)
 }
 
+fn get_q2_result() -> anyhow::Result<usize> {
+    let schematic = get_full_input_from_stdin()?;
+    let mut gear_candidates: HashMap<(usize, usize), Vec<usize>> = HashMap::with_capacity(1000);
+
+    for (i, line) in schematic.clone().into_iter().enumerate() {
+        for (j, elem) in line.into_iter().enumerate() {
+            let Some(SchematicItem::Number { value, .. }) = elem else {continue;};
+            let indices = get_adjacent_indices((i, j), &schematic).unwrap();
+
+            for (x, y) in indices {
+                if let Some(SchematicItem::Symbol('*')) = schematic[x][y] {
+                    if let Some(vec) = gear_candidates.get(&(x, y)) {
+                        eprintln!("updated map");
+                        let mut vec = vec.clone();
+                        vec.push(value as usize);
+                        gear_candidates.insert((i, j), vec);
+                    } else {
+                        gear_candidates.insert((x, y), vec![value as usize]);
+                    }
+                }
+            }
+        }
+    }
+
+    Ok(gear_candidates
+        .into_iter()
+        .filter_map(|(_, nums)| match nums.len() {
+            2 => Some(nums[0] * nums[1]),
+            _ => None,
+        })
+        .fold(0, |a, b| a + b)
+    )
+}
+
 fn main() {
-    let res = get_q1_result().unwrap();
+    let res = get_q2_result().unwrap();
     eprintln!("{}", res);
 }
