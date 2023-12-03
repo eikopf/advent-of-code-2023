@@ -1,3 +1,5 @@
+use aoc::{Solution, Question};
+
 use std::{io, collections::HashMap};
 
 use nom::{
@@ -82,8 +84,11 @@ fn get_full_input_from_stdin() -> anyhow::Result<Schematic> {
     )
 }
 
-fn get_adjacent_symbols((i, j): (usize, usize), schematic: &Schematic) -> Option<Vec<SchematicItem>> {
-    let Some(SchematicItem::Number { value, length }) = schematic[i][j] else {
+fn get_adjacent_symbols(
+    (i, j): (usize, usize), 
+    schematic: &Schematic
+) -> Option<Vec<SchematicItem>> {
+    let Some(SchematicItem::Number { length, .. }) = schematic[i][j] else {
         return None;
     };
 
@@ -141,7 +146,7 @@ fn get_adjacent_indices(
     (i, j): (usize, usize), 
     schematic: &Schematic
 ) -> Option<Vec<(usize, usize)>> {
-    let Some(SchematicItem::Number { value, length }) = schematic[i][j] else {return None;};
+    let Some(SchematicItem::Number { length, .. }) = schematic[i][j] else {return None;};
     let mut adjacent_indices = Vec::with_capacity(2 * length + 6);
 
     if j > 0 {
@@ -210,7 +215,6 @@ fn get_q2_result() -> anyhow::Result<usize> {
             for (x, y) in indices {
                 if let Some(SchematicItem::Symbol('*')) = schematic[x][y] {
                     if let Some(vec) = gear_candidates.get(&(x, y)) {
-                        eprintln!("updated map");
                         let mut vec = vec.clone();
                         vec.push(value as usize);
                         gear_candidates.insert((i, j), vec);
@@ -233,6 +237,10 @@ fn get_q2_result() -> anyhow::Result<usize> {
 }
 
 fn main() {
-    let res = get_q2_result().unwrap();
+    let cli: Solution = argh::from_env();
+    let res = match cli.question {
+        Question::One => get_q1_result(),
+        Question::Two => get_q2_result(),
+    }.unwrap();
     eprintln!("{}", res);
 }

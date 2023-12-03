@@ -1,14 +1,37 @@
-pub fn add(left: usize, right: usize) -> usize {
-    left + right
+use argh::FromArgs;
+use std::{str::FromStr, fmt::Display};
+use thiserror::Error;
+
+#[derive(Error, Debug)]
+pub struct QuestionParseError(String);
+
+impl Display for QuestionParseError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Expected one of \"--q1\" or \"--q2\"; got {}", self.0)
+    }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
+pub enum Question {
+    One,
+    Two,
+}
 
-    #[test]
-    fn it_works() {
-        let result = add(2, 2);
-        assert_eq!(result, 4);
+impl FromStr for Question {
+    type Err = QuestionParseError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "1" => Ok(Self::One),
+            "2" => Ok(Self::Two),
+            other @ _ => Err(QuestionParseError(String::from(other))),
+        }
     }
+}
+
+#[derive(FromArgs)]
+/// A solution to an AOC2023 day.
+pub struct Solution {
+    #[argh(option, short = 'q')]
+    /// the question to run
+    pub question: Question, 
 }

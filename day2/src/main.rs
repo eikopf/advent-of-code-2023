@@ -1,12 +1,13 @@
 use std::io;
 
+use aoc::{Solution, Question};
 use nom::{
     IResult, 
-    multi::{fold_many_m_n, many1, separated_list1}, 
+    multi::{fold_many_m_n, many1}, 
     character::complete::u8, 
     Parser, 
     bytes::complete::tag, 
-    sequence::{separated_pair, preceded, delimited, terminated, Tuple},
+    sequence::{separated_pair, delimited, terminated},
     branch::alt, combinator::{opt, map},
 };
 
@@ -73,8 +74,6 @@ fn get_q1_result() -> anyhow::Result<usize> {
 
         if game_is_possible {
             possible_sum += game.index;
-        } else {
-            eprintln!("{}:\n{:?}\n", input, game.sets);
         }
     }
 
@@ -111,10 +110,6 @@ fn get_q2_result() -> anyhow::Result<usize> {
         minimum_sets.push(minimum_set);
     }
 
-    for set in &minimum_sets {
-        eprintln!("{:?}", set);
-    }
-
     Ok(minimum_sets
         .into_iter()
         .fold(0, 
@@ -125,6 +120,10 @@ fn get_q2_result() -> anyhow::Result<usize> {
 }
 
 fn main() {
-    let res = get_q2_result().unwrap();
+    let cli: Solution = argh::from_env();
+    let res = match cli.question {
+        Question::One => get_q1_result(),
+        Question::Two => get_q2_result(),
+    }.unwrap();
     println!("{}", res);
 }

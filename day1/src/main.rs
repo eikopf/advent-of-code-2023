@@ -1,5 +1,6 @@
 use std::io;
 
+use aoc::{Question, Solution};
 use nom::{
     IResult, 
     character::complete::{alpha0, anychar}, 
@@ -75,7 +76,6 @@ fn get_q1_result() -> anyhow::Result<usize> {
     for line in lines {
         let input = line.unwrap();
         let digits = literal_digits(&input).unwrap().1;
-        eprintln!("{:?}, {:?}", input, digits);
         let first = *digits.first().unwrap() as usize;
         let last = *digits.last().unwrap() as usize;
         acc += (first * 10) + last;
@@ -91,7 +91,6 @@ fn get_q2_result() -> anyhow::Result<usize> {
     for line in lines {
         let input = line.unwrap();
         let digits = literal_and_named_digits(&input).unwrap().1;
-        eprintln!("{:?}, {:?}", input, digits);
         let first = *digits.first().unwrap() as usize;
         let last = *digits.last().unwrap() as usize;
         acc += (first * 10) + last;
@@ -101,6 +100,10 @@ fn get_q2_result() -> anyhow::Result<usize> {
 }
 
 fn main() {
-    let res = get_q2_result().unwrap();
+    let cli: Solution = argh::from_env();
+    let res = match cli.question {
+        Question::One => get_q1_result(),
+        Question::Two => get_q2_result(),
+    }.unwrap();
     println!("{:?}", res);
 }
