@@ -144,7 +144,10 @@ fn get_q2_result() -> anyhow::Result<usize> {
     let cards: Vec<Card> = std::io::stdin()
         .lines()
         .into_iter()
-        .map(|line| Card::from_str(&line.unwrap()).unwrap()).collect();
+        .map(|line| 
+            Card::from_str(&line.unwrap()).unwrap()
+        )
+        .collect();
 
     let mut multiplicities: Vec<usize> = Vec::with_capacity(cards.len());
     for _ in 0..cards.len() { multiplicities.push(1) };
