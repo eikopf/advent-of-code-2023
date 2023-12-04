@@ -7,7 +7,7 @@ pub struct QuestionParseError(String);
 
 impl Display for QuestionParseError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "Expected one of \"--q1\" or \"--q2\"; got {}", self.0)
+        write!(f, "Expected --question [0|1] or -q [0|1]; got {}", self.0)
     }
 }
 
