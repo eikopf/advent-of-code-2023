@@ -34,16 +34,25 @@ struct Card {
 
 impl Card {
     /// Returns the number of points that this card is worth.
-    fn points(&self) -> usize {
-        let mut match_count = 0;
+    fn matches(&self) -> usize {
+        let mut matches = 0;
         
         for winning in &self.winning {
             for actual in &self.actual {
                 if winning == actual {
-                    match_count += 1;
+                    matches += 1;
                 }
             }
         }
+
+        matches
+    }
+
+    fn points(&self) -> usize {
+        let match_count: u32 = self
+            .matches()
+            .try_into()
+            .unwrap();
 
         if match_count == 0 {
             0
@@ -125,11 +134,35 @@ fn get_q1_result() -> anyhow::Result<usize> {
     )
 }
 
+/// Reads the input from stdin and returns the answer to question 2.
+///
+/// The answer to question 2 is defined as the total number of scratchcards,
+/// and where each card generates additional new cards based on the number
+/// of matches. New cards are generated sequentially, such that if card 6 has
+/// three matches, then it also generates cards 7, 8, and 9.
+fn get_q2_result() -> anyhow::Result<usize> {
+    let cards: Vec<Card> = std::io::stdin()
+        .lines()
+        .into_iter()
+        .map(|line| Card::from_str(&line.unwrap()).unwrap()).collect();
+
+    let mut multiplicities: Vec<usize> = Vec::with_capacity(cards.len());
+    for _ in 0..cards.len() { multiplicities.push(1) };
+
+    for card in cards {
+        for i in 1..=card.matches() {
+            multiplicities[card.id + i - 1] += multiplicities[card.id - 1];
+        }
+    }
+        
+    Ok(multiplicities.into_iter().sum())
+}
+
 fn main() {
     let cli: Solution = argh::from_env();
     let res = match cli.question {
         Question::One => get_q1_result(),
-        Question::Two => todo!(),
+        Question::Two => get_q2_result(),
     }.unwrap();
 
     eprintln!("{}", res);
