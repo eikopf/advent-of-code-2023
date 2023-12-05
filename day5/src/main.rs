@@ -1,4 +1,4 @@
-use std::str::FromStr;
+use std::{str::FromStr, ops::Range};
 
 use aoc::Solution;
 use nom::{
@@ -39,7 +39,7 @@ fn strip_locks<T>(vec: Vec<TransformLock<T>>) -> Vec<T> {
 }
 
 /// Represents an individual line in a map.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 struct RangeMap {
     /// The starting source number (the second field of a line).
     source_start: usize,
@@ -70,6 +70,7 @@ impl RangeMap {
 }
 
 /// Represents a complete mapping between categories.
+#[derive(Debug, Clone)]
 struct CategoryMap {
     /// Represents the individual lines of the map.
     range_maps: Vec<RangeMap>,
@@ -91,6 +92,7 @@ impl CategoryMap {
 /// Represents the complete source data, with the maps stored
 /// in-order such that applying them sequentially will produce
 /// a seed-location mapping.
+#[derive(Debug, Clone)]
 struct Almanac {
     /// The seeds given by the first line of the source data.
     seeds: Vec<usize>,
@@ -108,14 +110,14 @@ impl Almanac {
             .fold(self.seeds, |acc, map|{ map.apply(acc) })
     }
 
-    fn expand_seeds_as_ranges(&mut self) {
-        self.seeds = self.seeds.chunks(2).map(|chunk| {
+    // TODO: write method to get iterator over the ranges
+    // defined by self.seeds (per question 2).
+    fn into_range_iter(&self) -> impl Iterator<Item = usize> + '_ {
+        self.seeds.chunks(2).map(|chunk| {
             let a = usize::min(chunk[0], chunk[1]);
             let b = usize::max(chunk[0], chunk[1]);
-            let mut range = Vec::with_capacity(b - a);
-            for i in a..b { range.push(i); };
-            range
-        }).flatten().collect();
+            (a..b).into_iter()
+        }).flatten()
     }
 }
 
@@ -206,13 +208,23 @@ fn get_q1_result() -> anyhow::Result<usize> {
 /// Reads the input from stdin and returns the answer to question 2.
 fn get_q2_result() -> anyhow::Result<usize> {
     let source = aoc::read_stdin_to_string();
-    let mut almanac = Almanac::from_str(&source)?;
-    almanac.expand_seeds_as_ranges();
-    let locations = almanac.apply_all();
-    match locations.iter().min() {
-        Some(&min) => Ok(min),
-        None => Err(anyhow::Error::msg("locations has no minimum")),
+    let almanac = Almanac::from_str(&source)?;
+    let seed_iter = almanac.into_range_iter();
+    let mut minimum_location = usize::MAX;
+
+    for seed in seed_iter {
+        let mut almanac = almanac.clone();
+        almanac.seeds.clear();
+        almanac.seeds.push(seed);
+        let loc = almanac.apply_all()[0];
+
+        if loc < minimum_location {
+            minimum_location = loc;
+            eprintln!("minimum location: {}", minimum_location);
+        }
     }
+
+    Ok(minimum_location)
 }
 
 fn main() {
