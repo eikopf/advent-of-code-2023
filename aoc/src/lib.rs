@@ -1,5 +1,5 @@
 use argh::FromArgs;
-use std::{str::FromStr, fmt::Display};
+use std::{str::FromStr, fmt::Display, io::StdinLock};
 use thiserror::Error;
 
 #[derive(Error, Debug)]
@@ -34,4 +34,16 @@ pub struct Solution {
     #[argh(option, short = 'q')]
     /// the question to run
     pub question: Question, 
+}
+
+pub fn read_stdin_to_string() -> String {
+    std::io::stdin()
+        .lines()
+        .map(|line| line.unwrap())
+        .collect::<Vec<String>>()
+        .join("\n")
+}
+
+pub fn read_stdin_by_line() -> std::io::Lines<std::io::StdinLock<'static>> {
+    std::io::stdin().lines()
 }
