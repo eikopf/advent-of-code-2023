@@ -36,7 +36,7 @@ For question 2, it's important to note that the image of a range under a `RangeM
 
 A range $[a, b)$ "splits" into multiple ranges if it is partially covered by the source range $[c, d)$ of a `RangeMap` whose mapping is a function $f:[c, d)\to[e, f)$: consider the following three cases:
 
-1. $c\in[a, b)$, which generates under $f$ the ranges $[a, c)$ and $\{f(x):x\in[c, b)\}$;
+1. $`c\in[a, b)`$, which generates under $f$ the ranges $[a, c)$ and $\{f(x):x\in[c, b)\}$;
 2. $d\in[a, b)$, which generates under $f$ the ranges $\{f(x):x\in[a, d)\}$ and $[d, b)$;
 3. $c,d\in[a, b)$, which generates under $f$ the ranges $[a, c)$, $[d, b)$, and $\{f(x):x\in[c, d)\}.
 
