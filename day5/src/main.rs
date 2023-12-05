@@ -1,5 +1,4 @@
 use std::{str::FromStr, ops::Range};
-
 use aoc::Solution;
 use nom::{
     IResult, 
@@ -10,6 +9,7 @@ use nom::{
     combinator::map_res, 
     Parser, error::Error, Finish
 };
+use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 
 /// Represents a struct that knows whether
 /// or not it has been transformed in some way.
@@ -67,6 +67,14 @@ impl RangeMap {
             }
         }).collect()
     }
+
+    fn process_value(&self, value: usize) -> usize {
+        if (value >= self.source_start) && (value < self.source_start + self.len) {
+            value - self.source_start + self.target_start
+        } else {
+            value
+        }
+    }
 }
 
 /// Represents a complete mapping between categories.
@@ -77,7 +85,7 @@ struct CategoryMap {
 }
 
 impl CategoryMap {
-    fn apply(self, vec: Vec<usize>) -> Vec<usize> {
+   fn apply(self, vec: Vec<usize>) -> Vec<usize> {
         strip_locks(self
             .range_maps
             .into_iter()
@@ -85,22 +93,36 @@ impl CategoryMap {
                 |v, range_map| { 
                     range_map
                         .apply(v)
-                    }))
+                }
+            )
+        )
     }
+
+    fn process_value(&self, value: usize) -> usize {
+        for map in &self.range_maps {
+            let image = map.process_value(value);
+            
+            if image != value {
+                return image;
+            }
+        }
+
+        value
+    } 
 }
 
 /// Represents the complete source data, with the maps stored
 /// in-order such that applying them sequentially will produce
 /// a seed-location mapping.
 #[derive(Debug, Clone)]
-struct Almanac {
+struct Almanac<T> {
     /// The seeds given by the first line of the source data.
-    seeds: Vec<usize>,
+    seeds: Vec<T>,
     /// The category maps given by each individual map.
     maps: Vec<CategoryMap>,
 }
 
-impl Almanac {
+impl Almanac<usize> {
     /// Consumes self and returns the result of
     /// applying all the maps in self in series.
     fn apply_all(self) -> Vec<usize> {
@@ -109,19 +131,36 @@ impl Almanac {
             .into_iter()
             .fold(self.seeds, |acc, map|{ map.apply(acc) })
     }
+}
 
-    // TODO: write method to get iterator over the ranges
-    // defined by self.seeds (per question 2).
-    fn into_range_iter(&self) -> impl Iterator<Item = usize> + '_ {
-        self.seeds.chunks(2).map(|chunk| {
-            let a = usize::min(chunk[0], chunk[1]);
-            let b = usize::max(chunk[0], chunk[1]);
-            (a..b).into_iter()
-        }).flatten()
+impl Almanac<Range<usize>> {
+    fn get_minimum_location(self) -> usize {
+        self
+            .seeds
+            .par_iter()
+            .flat_map(|range| range.clone().into_iter())
+            .fold_with(usize::MAX, |minimum, seed| {
+                let location = self
+                    .maps
+                    .clone()
+                    .into_iter()
+                    .fold(seed, 
+                        |image, map| 
+                        map.process_value(image)
+                    );
+
+                if location < minimum {
+                    location
+                } else {
+                    minimum
+                }
+            })
+            .min()
+            .unwrap()
     }
 }
 
-impl FromStr for Almanac {
+impl FromStr for Almanac<usize> {
     type Err = Error<String>;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
@@ -131,6 +170,23 @@ impl FromStr for Almanac {
         match parser.parse(s).finish() {
             Ok((_, (seeds, maps))) => Ok(Almanac { seeds, maps }),
             Err(Error { input, code }) => Err(Error { input: input.to_string(), code }),
+        }
+    }
+}
+
+impl From<Almanac<usize>> for Almanac<Range<usize>> {
+    fn from(value: Almanac<usize>) -> Self {
+        Almanac {
+            maps: value.maps,
+            seeds: value
+                .seeds
+                .chunks_exact(2)
+                .map(|chunk|{
+                    let a = usize::min(chunk[0], chunk[1]);
+                    let b = usize::max(chunk[0], chunk[1]);
+                    a..b
+                })
+                .collect(),
         }
     }
 }
@@ -208,23 +264,8 @@ fn get_q1_result() -> anyhow::Result<usize> {
 /// Reads the input from stdin and returns the answer to question 2.
 fn get_q2_result() -> anyhow::Result<usize> {
     let source = aoc::read_stdin_to_string();
-    let almanac = Almanac::from_str(&source)?;
-    let seed_iter = almanac.into_range_iter();
-    let mut minimum_location = usize::MAX;
-
-    for seed in seed_iter {
-        let mut almanac = almanac.clone();
-        almanac.seeds.clear();
-        almanac.seeds.push(seed);
-        let loc = almanac.apply_all()[0];
-
-        if loc < minimum_location {
-            minimum_location = loc;
-            eprintln!("minimum location: {}", minimum_location);
-        }
-    }
-
-    Ok(minimum_location)
+    let almanac: Almanac<Range<usize>> = Almanac::from_str(&source)?.into();
+    Ok(almanac.get_minimum_location())
 }
 
 fn main() {
