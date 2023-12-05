@@ -1,5 +1,5 @@
 use argh::FromArgs;
-use std::{str::FromStr, fmt::Display, io::StdinLock};
+use std::{str::FromStr, fmt::Display};
 use thiserror::Error;
 
 #[derive(Error, Debug)]

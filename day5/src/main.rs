@@ -107,6 +107,16 @@ impl Almanac {
             .into_iter()
             .fold(self.seeds, |acc, map|{ map.apply(acc) })
     }
+
+    fn expand_seeds_as_ranges(&mut self) {
+        self.seeds = self.seeds.chunks(2).map(|chunk| {
+            let a = usize::min(chunk[0], chunk[1]);
+            let b = usize::max(chunk[0], chunk[1]);
+            let mut range = Vec::with_capacity(b - a);
+            for i in a..b { range.push(i); };
+            range
+        }).flatten().collect();
+    }
 }
 
 impl FromStr for Almanac {
@@ -186,10 +196,7 @@ fn map(source: &str) -> IResult<&str, CategoryMap> {
 fn get_q1_result() -> anyhow::Result<usize> {
     let source = aoc::read_stdin_to_string();
     let almanac = Almanac::from_str(&source)?;
-    eprintln!("seeds: {:?}", almanac.seeds);
-    almanac.maps.iter().for_each(|map| eprintln!("map: {:?}", map.range_maps.len()));
     let locations = almanac.apply_all();
-    eprintln!("locations: {:?}", locations);
     match locations.iter().min() {
         Some(&min) => Ok(min),
         None => Err(anyhow::Error::msg("locations has no minimum")),
@@ -198,7 +205,14 @@ fn get_q1_result() -> anyhow::Result<usize> {
 
 /// Reads the input from stdin and returns the answer to question 2.
 fn get_q2_result() -> anyhow::Result<usize> {
-    todo!()
+    let source = aoc::read_stdin_to_string();
+    let mut almanac = Almanac::from_str(&source)?;
+    almanac.expand_seeds_as_ranges();
+    let locations = almanac.apply_all();
+    match locations.iter().min() {
+        Some(&min) => Ok(min),
+        None => Err(anyhow::Error::msg("locations has no minimum")),
+    }
 }
 
 fn main() {
