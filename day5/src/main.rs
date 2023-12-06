@@ -9,7 +9,7 @@ use nom::{
     combinator::map_res, 
     Parser, error::Error, Finish
 };
-use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
+use rangemap::RangeMap;
 
 /// Represents a struct that knows whether
 /// or not it has been transformed in some way.
@@ -38,79 +38,12 @@ fn strip_locks<T>(vec: Vec<TransformLock<T>>) -> Vec<T> {
     }).collect()
 }
 
-/// Represents an individual line in a map.
-#[derive(Debug, Clone)]
-struct RangeMap {
-    /// The starting source number (the second field of a line).
-    source_start: usize,
-    /// The starting target (destination) number (the first field of a line).
-    target_start: usize,
-    /// The length of the ranges (the third field of a line).
-    len: usize,
-}
-
-impl RangeMap {
-    /// Consumes self and some input, and returns the image
-    /// of the input under this mapping. If the image has been
-    /// transformed, then it will be locked; otherwise it will
-    /// remain unlocked. This function also respects the locked
-    /// status of incoming input.
-    fn apply(self, vec: Vec<TransformLock<usize>>) -> Vec<TransformLock<usize>> {
-        vec.into_iter().map(move |x| match x {
-            TransformLock::Locked(x) => TransformLock::Locked(x),
-            TransformLock::Unlocked(x) => {
-                if (x >= self.source_start) && (x < self.source_start + self.len) {
-                    TransformLock::Locked((x - self.source_start) + self.target_start)
-                } else {
-                    TransformLock::Unlocked(x)
-                }
-            }
-        }).collect()
-    }
-
-    fn process_value(&self, value: usize) -> usize {
-        if (value >= self.source_start) && (value < self.source_start + self.len) {
-            value - self.source_start + self.target_start
-        } else {
-            value
-        }
-    }
-}
-
 /// Represents a complete mapping between categories.
 #[derive(Debug, Clone)]
 struct CategoryMap {
     /// Represents the individual lines of the map.
-    range_maps: Vec<RangeMap>,
+    range_maps: Vec<RangeMap<usize, isize>>,
 }
-
-impl CategoryMap {
-   fn apply(self, vec: Vec<usize>) -> Vec<usize> {
-        strip_locks(self
-            .range_maps
-            .into_iter()
-            .fold(unlocked(vec), 
-                |v, range_map| { 
-                    range_map
-                        .apply(v)
-                }
-            )
-        )
-    }
-
-    fn process_value(&self, value: usize) -> usize {
-        for map in &self.range_maps {
-            let image = map.process_value(value);
-            
-            if image != value {
-                return image;
-            }
-        }
-
-        value
-    } 
-}
-
 /// Represents the complete source data, with the maps stored
 /// in-order such that applying them sequentially will produce
 /// a seed-location mapping.
@@ -120,75 +53,6 @@ struct Almanac<T> {
     seeds: Vec<T>,
     /// The category maps given by each individual map.
     maps: Vec<CategoryMap>,
-}
-
-impl Almanac<usize> {
-    /// Consumes self and returns the result of
-    /// applying all the maps in self in series.
-    fn apply_all(self) -> Vec<usize> {
-        self
-            .maps
-            .into_iter()
-            .fold(self.seeds, |acc, map|{ map.apply(acc) })
-    }
-}
-
-impl Almanac<Range<usize>> {
-    fn get_minimum_location(self) -> usize {
-        self
-            .seeds
-            .par_iter()
-            .flat_map(|range| range.clone().into_iter())
-            .fold_with(usize::MAX, |minimum, seed| {
-                let location = self
-                    .maps
-                    .clone()
-                    .into_iter()
-                    .fold(seed, 
-                        |image, map| 
-                        map.process_value(image)
-                    );
-
-                if location < minimum {
-                    location
-                } else {
-                    minimum
-                }
-            })
-            .min()
-            .unwrap()
-    }
-}
-
-impl FromStr for Almanac<usize> {
-    type Err = Error<String>;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let mut parser = seeds
-            .and(separated_list1(multispace1, map));
-
-        match parser.parse(s).finish() {
-            Ok((_, (seeds, maps))) => Ok(Almanac { seeds, maps }),
-            Err(Error { input, code }) => Err(Error { input: input.to_string(), code }),
-        }
-    }
-}
-
-impl From<Almanac<usize>> for Almanac<Range<usize>> {
-    fn from(value: Almanac<usize>) -> Self {
-        Almanac {
-            maps: value.maps,
-            seeds: value
-                .seeds
-                .chunks_exact(2)
-                .map(|chunk|{
-                    let a = usize::min(chunk[0], chunk[1]);
-                    let b = usize::max(chunk[0], chunk[1]);
-                    a..b
-                })
-                .collect(),
-        }
-    }
 }
 
 /// Parses the first line of the input into a list of seeds,
@@ -205,7 +69,7 @@ fn seeds(source: &str) -> IResult<&str, Vec<usize>> {
 }
 
 /// Parses an individual line in a map, leaving a trailing newline.
-fn map_line(source: &str) -> IResult<&str, RangeMap> {
+fn map_line(source: &str) -> IResult<&str, RangeMap<usize, usize>> {
     let mut parser = (
         map_res(u32, |x| x.try_into()), 
         preceded(
@@ -252,20 +116,12 @@ fn map(source: &str) -> IResult<&str, CategoryMap> {
 /// the minimum of the image of the seeds under the sequential image
 /// of all the given maps.
 fn get_q1_result() -> anyhow::Result<usize> {
-    let source = aoc::read_stdin_to_string();
-    let almanac = Almanac::from_str(&source)?;
-    let locations = almanac.apply_all();
-    match locations.iter().min() {
-        Some(&min) => Ok(min),
-        None => Err(anyhow::Error::msg("locations has no minimum")),
-    }
+    todo!()
 }
 
 /// Reads the input from stdin and returns the answer to question 2.
 fn get_q2_result() -> anyhow::Result<usize> {
-    let source = aoc::read_stdin_to_string();
-    let almanac: Almanac<Range<usize>> = Almanac::from_str(&source)?.into();
-    Ok(almanac.get_minimum_location())
+    todo!()
 }
 
 fn main() {
