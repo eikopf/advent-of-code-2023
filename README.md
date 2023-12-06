@@ -45,3 +45,10 @@ A range $[a, b)$ "splits" into multiple ranges if it is partially covered by the
 Otherwise if $[c, d)$ totally covers $[a, b)$ a single range is generated (the image of $[a, b)$ under $f$), and if the two ranges are disjoint then $[a, b)$ is unchanged.
 
 This procedure can be iterated for each `RangeMap`, and then for each `CategoryMap`, to subdivide the initial set of seed-ranges (as defined in question 2) into a larger set of ranges. At the end of the process, the set of ranges (as a `Vec<Range>`) will be a list of the locations which have corresponding seeds; the solution is then just to find the minimum among their lower bounds.
+
+### Day 6
+#### Question 1
+The question ultimately becomes something like: "Here is a list of numbers; how many pairs of natural numbers which sum to each number have a corresponding product greater than the given threshold?"
+
+The one caveat to this representation is that symmetries are counted as different solutions, i.e. $(3, 4)$ and $(4, 3)$ are both valid solutions.
+
