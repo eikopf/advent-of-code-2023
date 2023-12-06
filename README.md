@@ -23,7 +23,10 @@ just run-day
 
 # run a particular question from a particular day
 # (ordered as day then question)
-just 6 2
+just run 6 2
+
+# with hyperfine installed, you can also time a particular solution
+just time 4 1
 ```
 
 ## Notes
