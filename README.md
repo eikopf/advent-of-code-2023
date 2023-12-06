@@ -56,4 +56,6 @@ The one caveat to this representation is that symmetries are counted as differen
 This was pretty trivial to implement as an iterator over ranges, and the final solution runs in about 1.3 μs.
 
 #### Question 2
-The dumb thing worked: I just rewrote the parser to produce a single `Race` struct, and then filtered over `(0..=duration).zip((0..=duration).rev())`. That came out to about 130 μs, and since `rayon` only lets you call `zip` on `Range<u16>` or smaller, that's the best I'm going to do for today.
+The dumb thing worked: I just rewrote the parser to produce a single `Race` struct, and then filtered over `(0..=duration).zip((0..=duration).rev())`. That came out to about 130 μs, and using `rayon` on a release build brought it down to 4.4 μs.
+
+For whatever reason, `rayon` only makes this possible if you switch to using `Range`s rather than `InclusiveRange`s, since it defines `IndexedParallelIterator` on `Range<usize>` but not `InclusiveRange<usize>`.
