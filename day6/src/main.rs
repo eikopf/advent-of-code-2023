@@ -7,6 +7,11 @@ use nom::{
     sequence::{preceded, Tuple},
     Finish, IResult, Parser,
 };
+use rayon::iter::{
+    IntoParallelIterator, 
+    IndexedParallelIterator, 
+    ParallelIterator
+};
 
 /// Represents a single race (column) from the source data.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -126,8 +131,9 @@ fn get_q1_result() -> anyhow::Result<usize> {
 fn get_q2_result() -> anyhow::Result<usize> {
     let race = get_race()?;
 
-    Ok((0..=(race.duration))
-        .zip((0..=(race.duration)).rev())
+    Ok((0..(race.duration))
+        .into_par_iter()
+        .zip((0..(race.duration)).into_par_iter().rev())
         .filter(|(a, b)| a * b > race.record_distance)
         .count())
 }
