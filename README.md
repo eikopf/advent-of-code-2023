@@ -12,6 +12,20 @@ cat data/day7.txt | cargo run -p day7 -- --question 2
 cat data/day3.txt | cargo run -p day3 -- -q 1
 ```
 
+If you have [`just`](https://github.com/casey/just) installed, the following commands also work:
+
+```sh
+# run all the questions from all the days sequentially
+just run-all
+
+# run both questions from a particular day
+just run-day
+
+# run a particular question from a particular day
+# (ordered as day then question)
+just 6 2
+```
+
 ## Notes
 > Days 1, 2, and 3 are ugly as sin; just trust me that they're not worth writing about.
 

@@ -5,55 +5,20 @@ use nom::{
     bytes::complete::{is_not, tag},
     character::complete::{multispace1, newline, u32},
     combinator::map_res,
+    error::Error,
     multi::separated_list1,
     sequence::{preceded, terminated, Tuple},
-    IResult, Parser,
+    Finish, IResult, Parser,
 };
 use rangemap::RangeMap;
 
-/// Represents a struct that knows whether
-/// or not it has been transformed in some way.
-///
-/// This is used to enforce the idempotency of [CategoryMap]s.
-enum TransformLock<T> {
-    /// Denotes that this data should be transformed.
-    Locked(T),
-    /// Denotes that this data should not be transformed.
-    Unlocked(T),
-}
-
-/// Wraps a given vector with [TransformLock::Unlocked] elementwise.
-fn unlocked<T>(vec: Vec<T>) -> Vec<TransformLock<T>> {
-    vec.into_iter()
-        .map(|x| TransformLock::Unlocked(x))
-        .collect()
-}
-
-/// Clears the elementwise locks from the given vector.
-fn strip_locks<T>(vec: Vec<TransformLock<T>>) -> Vec<T> {
-    vec.into_iter()
-        .map(|locked| match locked {
-            TransformLock::Locked(x) => x,
-            TransformLock::Unlocked(x) => x,
-        })
-        .collect()
-}
-
-/// Represents a complete mapping between categories.
-#[derive(Debug, Clone)]
-struct CategoryMap {
-    /// Represents the individual lines of the map.
-    range_maps: Vec<RangeMap<usize, isize>>,
-}
 /// Represents the complete source data, with the maps stored
 /// in-order such that applying them sequentially will produce
 /// a seed-location mapping.
 #[derive(Debug, Clone)]
-struct Almanac<T> {
-    /// The seeds given by the first line of the source data.
-    seeds: Vec<T>,
+struct Almanac {
     /// The category maps given by each individual map.
-    maps: Vec<CategoryMap>,
+    maps: Vec<RangeMap<usize, isize>>,
 }
 
 /// Parses the first line of the input into a list of seeds,
@@ -101,6 +66,32 @@ fn map(source: &str) -> IResult<&str, Vec<(Range<usize>, isize)>> {
     parser.parse(source)
 }
 
+/// Parses the given input and returns a list of seed values and an almanac composed
+/// of the mappings defined by the input.
+fn read_input(source: &str) -> anyhow::Result<(Vec<usize>, Almanac)> {
+    let mut parser = (seeds, separated_list1(newline, map));
+    match parser.parse(source).finish() {
+        Ok((_, (seeds, maps))) => {
+            let mut almanac = Almanac { maps: Vec::new() };
+
+            for map in maps {
+                let mut range_map = RangeMap::new();
+                for (range, offset) in map {
+                    range_map.insert(range, offset);
+                }
+                almanac.maps.push(range_map);
+            }
+
+            Ok((seeds, almanac))
+        }
+        Err(Error { input, code }) => Err(Error {
+            input: input.to_string(),
+            code,
+        }
+        .into()),
+    }
+}
+
 /// Reads the input from stdin and returns the answer to question 1.
 ///
 /// The answer to this question is the lowest location number that
@@ -108,6 +99,9 @@ fn map(source: &str) -> IResult<&str, Vec<(Range<usize>, isize)>> {
 /// the minimum of the image of the seeds under the sequential image
 /// of all the given maps.
 fn get_q1_result() -> anyhow::Result<usize> {
+    let source = aoc::read_stdin_to_string();
+    let (seeds, almanac) = read_input(&source)?;
+
     todo!()
 }
 
