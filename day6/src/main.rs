@@ -106,7 +106,6 @@ fn get_race() -> anyhow::Result<Race> {
 
 fn get_q1_result() -> anyhow::Result<usize> {
     let races = get_races()?;
-    eprintln!("{:?}", races);
 
     Ok(races
         .into_iter()

@@ -47,8 +47,13 @@ Otherwise if $[c, d)$ totally covers $[a, b)$ a single range is generated (the i
 This procedure can be iterated for each `RangeMap`, and then for each `CategoryMap`, to subdivide the initial set of seed-ranges (as defined in question 2) into a larger set of ranges. At the end of the process, the set of ranges (as a `Vec<Range>`) will be a list of the locations which have corresponding seeds; the solution is then just to find the minimum among their lower bounds.
 
 ### Day 6
+> This day was shockingly easy compared to my 18 hours of suffering on day 5.
 #### Question 1
 The question ultimately becomes something like: "Here is a list of numbers; how many pairs of natural numbers which sum to each number have a corresponding product greater than the given threshold?"
 
 The one caveat to this representation is that symmetries are counted as different solutions, i.e. $(3, 4)$ and $(4, 3)$ are both valid solutions.
 
+This was pretty trivial to implement as an iterator over ranges, and the final solution runs in about 1.3 μs.
+
+#### Question 2
+The dumb thing worked: I just rewrote the parser to produce a single `Race` struct, and then filtered over `(0..=duration).zip((0..=duration).rev())`. That came out to about 130 μs, and since `rayon` only lets you call `zip` on `Range<u16>` or smaller, that's the best I'm going to do for today.
