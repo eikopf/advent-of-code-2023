@@ -1,13 +1,13 @@
-use std::{str::FromStr, ops::Range};
+use std::ops::Range;
+
 use aoc::Solution;
 use nom::{
-    IResult, 
-    sequence::{preceded, Tuple, terminated}, 
-    bytes::complete::{tag, is_not}, 
-    multi::separated_list1, 
-    character::complete::{u32, newline, multispace1}, 
-    combinator::map_res, 
-    Parser, error::Error, Finish
+    bytes::complete::{is_not, tag},
+    character::complete::{multispace1, newline, u32},
+    combinator::map_res,
+    multi::separated_list1,
+    sequence::{preceded, terminated, Tuple},
+    IResult, Parser,
 };
 use rangemap::RangeMap;
 
@@ -24,18 +24,19 @@ enum TransformLock<T> {
 
 /// Wraps a given vector with [TransformLock::Unlocked] elementwise.
 fn unlocked<T>(vec: Vec<T>) -> Vec<TransformLock<T>> {
-    vec
-        .into_iter()
+    vec.into_iter()
         .map(|x| TransformLock::Unlocked(x))
         .collect()
 }
 
 /// Clears the elementwise locks from the given vector.
 fn strip_locks<T>(vec: Vec<TransformLock<T>>) -> Vec<T> {
-    vec.into_iter().map(|locked| match locked {
-        TransformLock::Locked(x) => x,
-        TransformLock::Unlocked(x) => x,
-    }).collect()
+    vec.into_iter()
+        .map(|locked| match locked {
+            TransformLock::Locked(x) => x,
+            TransformLock::Unlocked(x) => x,
+        })
+        .collect()
 }
 
 /// Represents a complete mapping between categories.
@@ -58,55 +59,46 @@ struct Almanac<T> {
 /// Parses the first line of the input into a list of seeds,
 /// and consumes the trailing whitespace.
 fn seeds(source: &str) -> IResult<&str, Vec<usize>> {
-    let mut parser = terminated(preceded(
-        tag("seeds: "), 
-        separated_list1(
-            tag(" "), 
-            map_res(u32, |x| usize::try_from(x))
-        )), multispace1);
+    let mut parser = terminated(
+        preceded(
+            tag("seeds: "),
+            separated_list1(tag(" "), map_res(u32, |x| usize::try_from(x))),
+        ),
+        multispace1,
+    );
 
     parser.parse(source)
 }
 
 /// Parses an individual line in a map, leaving a trailing newline.
-fn map_line(source: &str) -> IResult<&str, RangeMap<usize, usize>> {
+fn map_line(source: &str) -> IResult<&str, (Range<usize>, isize)> {
     let mut parser = (
-        map_res(u32, |x| x.try_into()), 
-        preceded(
-            tag(" "), 
-            map_res(u32, |x| x.try_into()), 
-        ), 
-        preceded(
-            tag(" "), 
-            map_res(u32, |x| x.try_into()), 
-        ));
-
-    parser
-        .parse(source)
-        .map(|(tail, (target_start, source_start, len))|{
-        (tail, RangeMap {
-            source_start,
-            target_start,
-            len,
-        })
-    })
-}
-
-/// Parses a complete map.
-fn map(source: &str) -> IResult<&str, CategoryMap> {
-    let mut parser = preceded(
-        is_not("\n").and(newline), 
-        separated_list1(
-            newline, 
-            map_line
-        )
+        map_res(u32, |x| usize::try_from(x)),
+        preceded(tag(" "), map_res(u32, |x| usize::try_from(x))),
+        preceded(tag(" "), map_res(u32, |x| usize::try_from(x))),
     );
 
     parser
         .parse(source)
-        .map(|(tail, range_maps)|{
-        (tail, CategoryMap { range_maps })
-    })
+        .map(|(tail, (target_start, source_start, len))| {
+            (
+                tail,
+                (
+                    (source_start)..(source_start + len),
+                    (target_start as isize - source_start as isize),
+                ),
+            )
+        })
+}
+
+/// Parses a complete map.
+fn map(source: &str) -> IResult<&str, Vec<(Range<usize>, isize)>> {
+    let mut parser = preceded(
+        is_not("\n").and(newline),
+        separated_list1(newline, map_line),
+    );
+
+    parser.parse(source)
 }
 
 /// Reads the input from stdin and returns the answer to question 1.
@@ -125,10 +117,11 @@ fn get_q2_result() -> anyhow::Result<usize> {
 }
 
 fn main() {
-    let cli: Solution = argh::from_env();
+    let cli = Solution::new();
     let res: usize = match cli.question {
         aoc::Question::One => get_q1_result(),
         aoc::Question::Two => get_q2_result(),
-    }.unwrap();
+    }
+    .unwrap();
     println!("{}", res);
 }

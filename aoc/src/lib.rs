@@ -36,6 +36,12 @@ pub struct Solution {
     pub question: Question, 
 }
 
+impl Solution {
+    pub fn new() -> Self {
+        argh::from_env()
+    }
+}
+
 pub fn read_stdin_to_string() -> String {
     std::io::stdin()
         .lines()
