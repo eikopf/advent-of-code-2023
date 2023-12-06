@@ -1,5 +1,3 @@
-use std::ops::Range;
-
 use aoc::Solution;
 use nom::{
     bytes::complete::{is_not, tag},
@@ -11,6 +9,59 @@ use nom::{
     Finish, IResult, Parser,
 };
 use rangemap::RangeMap;
+use std::ops::Range;
+
+/// Effectively a newtype wrapper around a RangeMap
+/// with an apply function that defaults to the identity
+/// of the argument.
+#[derive(Debug, Clone)]
+struct IdRangeMap(RangeMap<usize, isize>);
+
+impl From<RangeMap<usize, isize>> for IdRangeMap {
+    fn from(value: RangeMap<usize, isize>) -> Self {
+        Self(value)
+    }
+}
+
+impl IdRangeMap {
+    /// Returns the image of the argument under self.
+    fn map_value(&self, value: usize) -> usize {
+        if let Some(offset) = self.0.get(&value) {
+            ((isize::try_from(value).unwrap()) + *offset).try_into().unwrap()
+        } else {
+            value
+        }
+    }
+
+    /// Returns the images of the given ranges under self.
+    fn map_ranges(&self, mut ranges: Vec<Range<usize>>) -> Vec<Range<usize>> {
+        let mut images = Vec::with_capacity(ranges.len());
+        while let Some(range) = ranges.pop() {
+            if self.0.overlaps(&range) {
+                for (domain, offset) in self.0.overlapping(&range) {
+                    let lower = usize::max(range.start, domain.start);
+                    let lower_image: usize = ((lower as isize) + offset).try_into().unwrap();
+                    let upper = usize::max(range.end, domain.end);
+                    let upper_image: usize = ((upper as isize) + offset).try_into().unwrap();
+                    // push the image of the overlapping region
+                    images.push(lower_image..upper_image);
+                    // push the nonoverlapping sections back onto the stack
+                    if range.start < lower {
+                        ranges.push((range.start)..lower);
+                    }
+                    if upper < range.end {
+                        ranges.push(upper..(range.end));
+                    }
+                }
+            } else {
+                images.push(range);
+            }
+        }
+
+        images.shrink_to_fit();
+        images
+    }
+}
 
 /// Represents the complete source data, with the maps stored
 /// in-order such that applying them sequentially will produce
@@ -18,7 +69,7 @@ use rangemap::RangeMap;
 #[derive(Debug, Clone)]
 struct Almanac {
     /// The category maps given by each individual map.
-    maps: Vec<RangeMap<usize, isize>>,
+    maps: Vec<IdRangeMap>,
 }
 
 /// Parses the first line of the input into a list of seeds,
@@ -69,17 +120,18 @@ fn map(source: &str) -> IResult<&str, Vec<(Range<usize>, isize)>> {
 /// Parses the given input and returns a list of seed values and an almanac composed
 /// of the mappings defined by the input.
 fn read_input(source: &str) -> anyhow::Result<(Vec<usize>, Almanac)> {
-    let mut parser = (seeds, separated_list1(newline, map));
+    let mut parser = (seeds, separated_list1(multispace1, map));
     match parser.parse(source).finish() {
         Ok((_, (seeds, maps))) => {
             let mut almanac = Almanac { maps: Vec::new() };
 
             for map in maps {
+                eprintln!("{:?}", almanac.maps.len());
                 let mut range_map = RangeMap::new();
                 for (range, offset) in map {
                     range_map.insert(range, offset);
                 }
-                almanac.maps.push(range_map);
+                almanac.maps.push(IdRangeMap(range_map));
             }
 
             Ok((seeds, almanac))
@@ -101,8 +153,24 @@ fn read_input(source: &str) -> anyhow::Result<(Vec<usize>, Almanac)> {
 fn get_q1_result() -> anyhow::Result<usize> {
     let source = aoc::read_stdin_to_string();
     let (seeds, almanac) = read_input(&source)?;
+    eprintln!("{:?}", almanac);
 
-    todo!()
+    Ok(almanac
+        .maps
+        .into_iter()
+        .fold(seeds, 
+            |values, map| 
+            values
+                .into_iter()
+                .map(
+                    |val| 
+                    map.map_value(val)
+                )
+                .collect()
+        )
+        .into_iter()
+        .min()
+        .unwrap())
 }
 
 /// Reads the input from stdin and returns the answer to question 2.
