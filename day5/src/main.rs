@@ -126,7 +126,6 @@ fn read_input(source: &str) -> anyhow::Result<(Vec<usize>, Almanac)> {
             let mut almanac = Almanac { maps: Vec::new() };
 
             for map in maps {
-                eprintln!("{:?}", almanac.maps.len());
                 let mut range_map = RangeMap::new();
                 for (range, offset) in map {
                     range_map.insert(range, offset);
@@ -153,7 +152,6 @@ fn read_input(source: &str) -> anyhow::Result<(Vec<usize>, Almanac)> {
 fn get_q1_result() -> anyhow::Result<usize> {
     let source = aoc::read_stdin_to_string();
     let (seeds, almanac) = read_input(&source)?;
-    eprintln!("{:?}", almanac);
 
     Ok(almanac
         .maps
@@ -175,7 +173,27 @@ fn get_q1_result() -> anyhow::Result<usize> {
 
 /// Reads the input from stdin and returns the answer to question 2.
 fn get_q2_result() -> anyhow::Result<usize> {
-    todo!()
+    let source = aoc::read_stdin_to_string();
+    let (seeds, almanac) = read_input(&source)?;
+
+    let seed_ranges = seeds
+        .chunks_exact(2)
+        .map(|chunk| match chunk[0] < chunk[1] {
+            true => chunk[0]..chunk[1],
+            false => chunk[1]..chunk[0],
+        })
+        .collect();
+
+    Ok(almanac
+        .maps
+        .into_iter()
+        .fold(seed_ranges, 
+            |acc, map| 
+            map.map_ranges(acc))
+        .into_iter()
+        .map(|range| range.start)
+        .min()
+        .unwrap())
 }
 
 fn main() {
