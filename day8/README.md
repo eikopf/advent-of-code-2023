@@ -7,4 +7,4 @@ I originally tried to write a bruteforce solution, but it occurs to me that that
 
 > The assumption here is that each node is a component of a (relatively) short cycle, such that we only have to concern ourselves with a single loop through each of them. I'm also going to assume that each cycle only has one solution, otherwise this calculation is significantly more painful.
 
-This gives us a list of cycle lengths, and we also want to know the indices of the terminal nodes in each cycle. Call the cycle lengths $L_i$ and the terminal indices $t_i$ for the cycle $i$; then in particular we know that the set of solutions for cycle $i$ is all $n\in\mathbb{N}_0$ such that $t_i\equiv n\pmod{L_i} \}$.
+This gives us a list of cycle lengths, and we also want to know the indices of the terminal nodes in each cycle. Call the cycle lengths $L_i$ and the terminal indices $t_i$ for the cycle $i$; then in particular we know that the set of solutions for cycle $i$ is all $n\in\mathbb{N}_0$ such that $t_i\equiv n\pmod{L_i}$.
