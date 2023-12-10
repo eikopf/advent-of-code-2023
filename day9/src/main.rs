@@ -28,7 +28,7 @@ impl History {
     }
 
     /// Returns the leading edge of the difference stack,
-    /// such that the application of reduce(|acc, x| x - acc)
+    /// such that the application of reduce(|acc, x| x - acc) (in reverse)
     /// yields the extrapolated value as described in question 2.
     fn get_diff_stack_leading_edge(&self) -> Vec<isize> {
         let mut edge = Vec::new();
