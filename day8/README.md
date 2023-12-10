@@ -7,4 +7,4 @@ I originally tried to write a bruteforce solution, but it occurs to me that that
 
 > The assumption here is that each node is a component of a (relatively) short cycle, such that we only have to concern ourselves with a single loop through each of them. I'm also going to assume that each cycle only has one solution, otherwise this calculation is significantly more painful.
 
-On the assumption that these are all cycles, we instead get the list of terminal indices $t_i$ for each node and calculate their prime factors $S_i$. Finally, we just remove duplicates and calculate the product of these factors, such that our result is given by $$\prod\bigcup_{0\le i\le n} S_i.$$
+On the assumption that these are all cycles, we instead get the list of terminal indices $t_i$ for each node and calculate their prime factors $S_i$. Finally, we just remove duplicates and calculate the product of these factors, such that our result is the lowest number which can be factored into the terminal indices of the given nodes.

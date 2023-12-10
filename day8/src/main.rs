@@ -9,6 +9,7 @@ use nom::{
     sequence::{terminated, Tuple},
     Finish, IResult, Parser,
 };
+use prime_factorization::Factorization;
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 enum Side {
@@ -24,10 +25,14 @@ struct Network(HashMap<Node, (Node, Node)>);
 
 impl Network {
     /// Traverses the network according to the given path and
-    /// returns the number of steps to get from AAA to ZZZ.
-    fn traverse(&self, path: &mut impl Iterator<Item = Side>) -> usize {
+    /// returns the number of steps from the start node to the end node.
+    fn traverse<S, E>(&self, path: &mut impl Iterator<Item = Side>, start: S, end: E) -> usize 
+    where 
+        E: Fn(Node) -> bool, 
+        S: Fn() -> Node,
+    {
         let mut count = 0;
-        let mut current_node = Node(['A', 'A', 'A']);
+        let mut current_node = start();
 
         loop {
             if let Some(side) = path.next() {
@@ -41,7 +46,7 @@ impl Network {
                 panic!("ran out of directions");
             }
 
-            if current_node == Node(['Z', 'Z', 'Z']) {
+            if end(current_node) {
                 break;
             }
         }
@@ -54,29 +59,19 @@ impl Network {
     /// which all end with Z; then the function returns the length of the
     /// traversal.
     fn ghost_traverse(&self, path: &mut impl Iterator<Item = Side>) -> usize {
-        let mut count = 0;
-        let mut current_nodes: Vec<Node> = self
+        let mut prime_factors = self
             .0
             .keys()
-            .filter(|&node| node.0[2] == 'A')
-            .map(|&node| node)
-            .collect();
+            .filter(|node| node.0[2] == 'A')
+            .map(|&node| self.traverse(path, || { node }, |node| { node.0[2] == 'Z' }))
+            .flat_map(|index| Factorization::<u128>::run(index.try_into().unwrap()).factors)
+            .map(|factor| usize::try_from(factor).unwrap())
+            .collect::<Vec<_>>();
 
-        loop {
-            if let Some(side) = path.next() {
-                count += 1;
-                current_nodes = current_nodes.into_iter().map(|node| match side {
-                    Side::Left => self.0.get(&node).unwrap().0,
-                    Side::Right => self.0.get(&node).unwrap().1,
-                }).collect();
-            } else {
-                panic!("ran out of directions");
-            }
-            
-            if current_nodes.iter().filter(|node| node.0[2] == 'Z').count() == current_nodes.len() { break; }
-        }
+        prime_factors.sort_unstable();
+        prime_factors.dedup();
 
-        count
+        prime_factors.into_iter().product()
     }
 }
 
@@ -128,7 +123,7 @@ fn parse_input_data() -> anyhow::Result<(Vec<Side>, Network)> {
 fn get_q1_result() -> anyhow::Result<usize> {
     let (path, network) = parse_input_data()?;
     let mut path_loop = path.into_iter().cycle();
-    Ok(network.traverse(&mut path_loop))
+    Ok(network.traverse(&mut path_loop, || { Node(['A', 'A', 'A']) }, |node| { node == Node(['Z', 'Z', 'Z']) }))
 }
 
 fn get_q2_result() -> anyhow::Result<usize> {
