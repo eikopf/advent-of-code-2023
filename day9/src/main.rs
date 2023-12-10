@@ -26,6 +26,21 @@ impl History {
 
         edge
     }
+
+    /// Returns the leading edge of the difference stack,
+    /// such that the application of reduce(|acc, x| x - acc)
+    /// yields the extrapolated value as described in question 2.
+    fn get_diff_stack_leading_edge(&self) -> Vec<isize> {
+        let mut edge = Vec::new();
+        let mut derivative = self.sequence.clone();
+
+        while derivative.iter().filter(|&&x| x != 0).count() != 0 {
+            edge.push(*derivative.first().unwrap());
+            derivative = diff(derivative);
+        }
+
+        edge
+    }
 }
 
 /// Computes the first difference of the given vector.
@@ -49,7 +64,12 @@ fn get_q1_result() -> anyhow::Result<isize> {
 }
 
 fn get_q2_result() -> anyhow::Result<isize> {
-    todo!()
+    Ok(aoc::read_stdin_by_line()
+        .map(|line| parse_source_line(&line.unwrap()).unwrap().1)
+        .map(|sequence| History { sequence })
+        .map(|history| history.get_diff_stack_leading_edge())
+        .map(|edge| edge.into_iter().rev().reduce(|acc, x| x - acc).unwrap())
+        .sum())
 }
 
 fn main() {
